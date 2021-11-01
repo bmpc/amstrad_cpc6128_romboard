@@ -14,6 +14,7 @@ namespace file_iterator {
     String getNextFilename();
 
     File getCurrentFile();
+    File findFile(String &filename);
 
     void setupSD();
     void destroy();

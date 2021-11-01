@@ -9,11 +9,18 @@ SSD1306AsciiAvrI2c _display;
 
 DisplayState currentState;
 
+void printInit() {
+    _display.clear();
+    _display.setFont(System5x7);
+    _display.println(F("=== ROM board 1.0 ==="));
+    _display.println();
+}
+
 void printCurrentROMs(String lower_rom, String upper_rom) {
     _display.clear();
 
     _display.setFont(System5x7);
-    _display.println(F("=== Lower ROM ==="));
+    _display.println(F("===== Lower ROM ====="));
     _display.setFont(Verdana12);
     _display.print("[ ");
     if (lower_rom == "") {
@@ -27,7 +34,7 @@ void printCurrentROMs(String lower_rom, String upper_rom) {
     _display.println();
 
     _display.setFont(System5x7);
-    _display.println(F("=== Upper ROM ==="));
+    _display.println(F("===== Upper ROM ====="));
     _display.setFont(Verdana12);
     _display.print("[ ");
     if (upper_rom == "") {
@@ -49,7 +56,7 @@ void printFilename(String prev, String curr, String next) {
     if (prev == "") {
         _display.clear();
         _display.setFont(System5x7);
-        _display.println(F("=== Select ROM ==="));
+        _display.println(F("==== Select ROM ===="));
         _display.println();
     } else {
         _display.clear(0, 150, 2, 50);
@@ -72,7 +79,7 @@ void printFilename(String prev, String curr, String next) {
 void printConfirmationMsg(String filename) {
     _display.clear();
     _display.setFont(System5x7);
-    _display.println(F("=== Flash ROM? ==="));
+    _display.println(F("=== Configure ROM ==="));
     _display.println();
 
     _display.setFont(Verdana12);
@@ -95,10 +102,10 @@ void printUpperLowerSelection(bool higher) {
     }
 }
 
-void printFlashStart(String filename) {
+void printStartLoading(String filename) {
     _display.clear();
     _display.setFont(System5x7);
-    _display.println("=== Flashing ===");
+    _display.println("====== Loading ======");
     _display.println();
     _display.setFont(Verdana12);
     _display.print("[ ");
@@ -109,7 +116,7 @@ void printFlashStart(String filename) {
     _display.println("]");
 }
 
-void printFlashProgress(String filename, uint8_t progress) {
+void printLoadingProgress(String filename, uint8_t progress) {
     _display.setRow(4);
     _display.setCol(4);
 
@@ -118,24 +125,36 @@ void printFlashProgress(String filename, uint8_t progress) {
     }
 }
 
-void printFlashComplete(bool error) {
+void printLoadingComplete(bool error) {
     _display.clear();
     _display.setFont(System5x7);
     if (error) {
-        _display.println("Flash error!");
+        _display.println("Load error!");
     } else {
-        _display.println("Flash complete.");
+        _display.println("Ready.");
     }
     _display.println();
-    _display.println("Please restart CPC!");
+}
+
+void printSave() {
+    _display.clear();
+    _display.setFont(System5x7);
+    _display.println("ROM configured.");
+    _display.println();
+    _display.println("Please restart CPC");
+    _display.println();
 }
 
 } // namespace
 
-void setup() { _display.begin(&Adafruit128x64, I2C_ADDRESS); currentState = LIST; }
+void setup() { _display.begin(&Adafruit128x64, I2C_ADDRESS); currentState = INIT; }
 
 void update(const DisplayState &state, const DisplayData &data) {
     switch (state) {
+    case INIT: {
+        printInit();
+        break;
+    }
     case LIST: {
         printCurrentROMs(data.m_lower_rom, data.m_upper_rom);
         break;
@@ -157,13 +176,15 @@ void update(const DisplayState &state, const DisplayData &data) {
             printConfirmationMsg(data.m_current_filename);
         }
         break;
-    case FLASHING:
-        if (data.m_flash_state == FlashState::STARTED) {
-            printFlashStart(data.m_current_filename);
-        } else if (data.m_flash_state == FlashState::FINISHED) {
-            printFlashComplete(data.m_flash_error);
-        } else { // flash in progress
-            printFlashProgress(data.m_current_filename, data.m_flash_progress);
+    case CONFIG:
+        printSave();
+    case LOADING:
+        if (data.m_load_state == LoadState::STARTED) {
+            printStartLoading(data.m_current_filename);
+        } else if (data.m_load_state == LoadState::FINISHED) {
+            printLoadingComplete(data.m_load_error);
+        } else { // loading in progress
+            printLoadingProgress(data.m_current_filename, data.m_load_progress);
         }
         break;
     default:

@@ -6,34 +6,28 @@
 #include "localstorage.h"
 #include "log.h"
 
+using namespace display;
+
 namespace controller {
 namespace {
-DisplayState m_state = LIST;
+DisplayState m_state = INIT;
 bool m_bank_selector = 0;
-
-FlashState m_flash_state = FlashState::IDLE;
-uint8_t m_flash_progress = 0;
-bool m_flash_error = false;
 
 volatile uint8_t m_int_btn = 0;
 uint64_t m_lastFire = 0;
 
-void updateDisplay() {
-    switch (m_state) {
-    case LIST: {
-        local_storage::RomPair pair = local_storage::load();
-        display::update(m_state, display::DisplayData::withLowerAndUpperRoms(pair.lowerRom, pair.upperRom));
-    } break;
-    case BROWSE:
-        display::update(m_state, display::DisplayData::withBrowseFiles(file_iterator::getPreviousFilename(), file_iterator::getCurrentFilename(), file_iterator::getNextFilename()));
-        break;
-    case CONFIRM:
-        display::update(m_state, display::DisplayData::withConfirmFile(file_iterator::getCurrentFilename(), m_bank_selector));
-        break;
-    case FLASHING:
-        display::update(m_state, display::DisplayData::withFlashProgress(file_iterator::getCurrentFilename(), m_flash_progress, m_flash_state, m_flash_error));
-        break;
-    }
+void updateDisplay(DisplayState state, DisplayData display_data) {
+    m_state = state;
+    update(m_state, display_data);
+}
+
+DisplayData getListDisplayData() {
+    local_storage::RomPair pair = local_storage::load();
+    return DisplayData::withLowerAndUpperRoms(pair.lowerRom, pair.upperRom);
+}
+
+DisplayData getBrowseDisplayData() {
+    return DisplayData::withBrowseFiles(file_iterator::getPreviousFilename(), file_iterator::getCurrentFilename(), file_iterator::getNextFilename());
 }
 
 void configDistinct() {
@@ -81,11 +75,67 @@ void intButtonHandler() {
     configCommon();
 }
 
+bool loadRom(String &filename, bool lower) {
+    DEBUG_PRINT("Loading file [");
+    DEBUG_PRINT(filename);
+    DEBUG_PRINT("] in bank ");
+    DEBUG_PRINTLN(lower ? "1" : "2");
+
+    updateDisplay(LOADING, DisplayData::withLoadProgress(filename, 0, LoadState::STARTED, false));
+
+    File romFile = file_iterator::findFile(filename);
+    if (!romFile) { // if the rom file can't be found/opened for some reason
+        DEBUG_PRINTLN("ROM file not found!");
+        local_storage::erase(lower);
+        return false;
+    } else {
+        bool success = sram::load(romFile, lower, [](uint8_t prog) {
+            updateDisplay(LOADING, DisplayData::withLoadProgress(LoadState::PROGRESS, prog));
+        });
+
+        romFile.close();
+        if (success) {
+            DEBUG_PRINTLN("Finished loading ROM.");
+        } else {
+            DEBUG_PRINTLN("Error loading ROM!");
+            local_storage::erase(lower);
+        }
+
+        return success;
+    }
+}
+
+void loadRoms() {
+    local_storage::RomPair pair = local_storage::load();
+
+    bool success = true;
+    if (pair.lowerRom != "" || pair.upperRom != "") {
+        if (pair.lowerRom != "") {
+            success &= loadRom(pair.lowerRom, true);
+        }
+        if (pair.upperRom != "") {
+            success &= loadRom(pair.upperRom, false);
+        }
+
+        updateDisplay(LOADING, DisplayData::withLoadProgress("", 0, LoadState::FINISHED, !success));
+
+        // TODO set z80 halt state HIGH
+
+        delay(2000); // wait for 1s so that user can see if there was an error loading a ROM
+    }
+
+    updateDisplay(LIST, getListDisplayData());
+}
+
 } // anonymous namespace
 
 void init() {
-    file_iterator::setupSD();
+    DEBUG_PRINTLN("Initializing ROM Board...");
+
     display::setup();
+    updateDisplay(INIT, DisplayData());
+    
+    file_iterator::setupSD();
 
     pinMode(BTN_INT, INPUT_PULLUP);
     pinMode(BTN_BROWSE, OUTPUT);
@@ -93,7 +143,12 @@ void init() {
 
     attachInterrupt(digitalPinToInterrupt(BTN_INT), &intButtonHandler, FALLING);
 
-    updateDisplay();
+    delay(1000);
+
+    loadRoms();
+
+    // TODO
+
 }
 
 void browseNext() {
@@ -101,98 +156,58 @@ void browseNext() {
         file_iterator::reset();
         file_iterator::moveNext();
         m_bank_selector = 0;
-        m_state = BROWSE; // Select ROM
-        updateDisplay();
+        updateDisplay(BROWSE, getBrowseDisplayData());
     } else if (m_state == BROWSE) {
         file_iterator::moveNext(); // Move to next filename
 
-        updateDisplay();
+        updateDisplay(BROWSE, getBrowseDisplayData());
     } else if (m_state == CONFIRM) {
         m_bank_selector = !m_bank_selector;
-        updateDisplay();
-    } else if (m_state == FLASHING && m_flash_state == FlashState::FINISHED) {
-        m_state = LIST;
-        m_flash_state = FlashState::IDLE;
-        updateDisplay();
+        updateDisplay(CONFIRM, DisplayData::withConfirmFile(file_iterator::getCurrentFilename(), m_bank_selector));
     }
 }
 
 void confirm() {
     if (m_state == BROWSE) {
-        m_state = CONFIRM; // Confirm flashing
         m_bank_selector = 0;
-        updateDisplay();
+        updateDisplay(CONFIRM, DisplayData::withConfirmFile(file_iterator::getCurrentFilename(), m_bank_selector));
     } else if (m_state == CONFIRM) {
         File currentFile = file_iterator::getCurrentFile();
         if (!currentFile) { // if the current file can't be found/opened for some reason
-            m_state = LIST;
             file_iterator::reset();
-            updateDisplay();
+            updateDisplay(LIST, getListDisplayData());
 
             DEBUG_PRINTLN("Invalid ROM file!");
             return;
         }
 
+        currentFile.close();
+
         String filename = file_iterator::getCurrentFilename();
 
-        DEBUG_PRINT("Flashing file [");
-        DEBUG_PRINT(filename);
-        DEBUG_PRINT("] in bank ");
-        DEBUG_PRINTLN(m_bank_selector ? "HIGH" : "LOW");
+        char currentName[13];
+        filename.toCharArray(currentName, 13);
+        DEBUG_PRINT("Saving filename [");
+        DEBUG_PRINT(currentName);
+        DEBUG_PRINTLN("]");
+        local_storage::save(currentName, !m_bank_selector);
 
-        m_state = FLASHING; // flashing
-        m_flash_state = FlashState::STARTED;
-        updateDisplay();
-
-        bool success = sram::load(currentFile, !m_bank_selector, [](uint8_t prog) {
-            display::update(FLASHING, display::DisplayData::withFlashProgress(FlashState::PROGRESS, prog));
-        });
-
-        /*
-            // Simulate flashing...
-            for (int i = 1; i <= 10; i++) {
-                pr.progress(i);
-                delay(200);
-            }
-            */
-
-        currentFile.close();
-        if (success) {
-            m_flash_error = false;
-            DEBUG_PRINTLN("Flashing finished with success.");
-            char currentName[13];
-            filename.toCharArray(currentName, 13);
-            DEBUG_PRINT("Saving filename [");
-            DEBUG_PRINT(currentName);
-            DEBUG_PRINTLN("]");
-            local_storage::save(currentName, !m_bank_selector);
-        } else {
-            m_flash_error = true;
-            DEBUG_PRINTLN("Flashing finished with error!");
-            local_storage::erase(!m_bank_selector);
-        }
-
-        m_state = FLASHING;
-        m_flash_state = FlashState::FINISHED;
-        m_flash_progress = 0;
         m_bank_selector = 0;
         file_iterator::reset();
-        updateDisplay();
 
-    } else if (m_state == FLASHING && m_flash_state == FlashState::FINISHED) {
-        m_state = LIST;
-        m_flash_state = FlashState::IDLE;
-        updateDisplay();
+        updateDisplay(CONFIG, DisplayData());
+
+        delay(2000);
+
+        updateDisplay(LIST, getListDisplayData());
     }
 }
 
 void cancel() {
-    if (m_state == BROWSE || m_state == CONFIRM || (m_state == FLASHING && m_flash_state == FlashState::FINISHED)) {
+    if (m_state == BROWSE || m_state == CONFIRM) {
         file_iterator::reset();
         m_bank_selector = 0;
-        m_flash_state = FlashState::IDLE;
-        m_state = LIST;
-        updateDisplay();
+        updateDisplay(LIST, getListDisplayData());
     }
 }
 

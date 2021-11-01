@@ -45,6 +45,31 @@ void destroy() {
     m_root.close();
 }
 
+File findFile(String &filename) {
+    File entry;
+    
+    reset();
+    while (true) {
+        entry = m_root.openNextFile();
+        if (!entry) { // No more files
+            return entry;
+        }
+
+        if (!entry.isDirectory()) {
+            DEBUG_PRINT(filename);
+            DEBUG_PRINT("=");
+            DEBUG_PRINTLN(entry.name());
+            if (filename.equalsIgnoreCase(entry.name())) {
+                return entry;
+            }
+        }
+
+        entry.close();
+    }
+
+    return entry;
+}
+
 void moveNext() {
     if (m_current == "" || m_next == "") {
         reset();

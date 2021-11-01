@@ -9,13 +9,15 @@
 #define I2C_ADDRESS 0x3C
 
 enum DisplayState {
-    LIST = 1,
-    BROWSE = 2,
-    CONFIRM = 3,
-    FLASHING = 5
+    INIT = 1,
+    LIST = 2,
+    BROWSE = 3,
+    CONFIRM = 4,
+    LOADING = 5,
+    CONFIG = 6
 };
 
-enum FlashState {
+enum LoadState {
     IDLE = 1,
     STARTED = 2,
     PROGRESS = 3,
@@ -29,10 +31,10 @@ struct DisplayData {
     String m_prev_filename;
     String m_current_filename;
     String m_next_filename;
-    uint8_t m_flash_progress;
+    uint8_t m_load_progress;
     bool m_bank_select;
-    FlashState m_flash_state;
-    bool m_flash_error;
+    LoadState m_load_state;
+    bool m_load_error;
 
     inline static DisplayData withLowerAndUpperRoms(const String &lower, const String &upper) {
         DisplayData dd;
@@ -49,19 +51,19 @@ struct DisplayData {
         return dd;
     }
 
-    inline static DisplayData withFlashProgress(const String &current, const uint8_t &progress, FlashState state, bool error) {
+    inline static DisplayData withLoadProgress(const String &current, const uint8_t &progress, LoadState state, bool error) {
         DisplayData dd;
         dd.m_current_filename = current;
-        dd.m_flash_progress = progress;
-        dd.m_flash_state = state;
-        dd.m_flash_error = error;
+        dd.m_load_progress = progress;
+        dd.m_load_state = state;
+        dd.m_load_error = error;
         return dd;
     }
 
-    inline static DisplayData withFlashProgress(FlashState state, const uint8_t &progress) {
+    inline static DisplayData withLoadProgress(LoadState state, const uint8_t &progress) {
         DisplayData dd;
-        dd.m_flash_progress = progress;
-        dd.m_flash_state = state;
+        dd.m_load_progress = progress;
+        dd.m_load_state = state;
         return dd;
     }
 
