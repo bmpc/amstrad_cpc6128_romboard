@@ -13,32 +13,57 @@
 namespace sram {
 namespace {
 
+// https://timodenk.com/blog/port-manipulation-and-arduino-digitalwrite-performance/
+void fastDigitalWrite(uint8_t pin, uint8_t x) {
+    if (pin / 8) { // pin >= 8
+        PORTB ^= (-x ^ PORTB) & (1 << (pin % 8));
+    } else {
+        PORTD ^= (-x ^ PORTD) & (1 << (pin % 8));
+    }
+}
+
+void fastShiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val) {
+    uint8_t i;
+
+    for (i = 0; i < 8; i++) {
+        if (bitOrder == LSBFIRST) {
+            fastDigitalWrite(dataPin, val & 1);
+            val >>= 1;
+        } else {
+            fastDigitalWrite(dataPin, (val & 128) != 0);
+            val <<= 1;
+        }
+
+        fastDigitalWrite(clockPin, HIGH);
+        fastDigitalWrite(clockPin, LOW);
+    }
+}
+
 void setAddress(uint16_t address, bool lower) {
-    shiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, (uint8_t)address);
-    
+    fastShiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, (uint8_t)address);
+
     uint8_t addr = (address >> 8) | (lower ? 0 : B01000000);
-    shiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, addr);
+    fastShiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, addr);
 }
 
 void setData(uint8_t data) {
-    shiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, data);
+    fastShiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, data);
 }
 
 void writeSRAMByte(uint16_t addr, uint8_t data, bool lower) {
     setData(data);
     setAddress(addr, lower);
 
-    digitalWrite(SR_STORAGE_CLK, HIGH);
-    delayMicroseconds(1);
-    digitalWrite(SR_STORAGE_CLK, LOW);
-    delayMicroseconds(1);
-    
-    digitalWrite(SRAM_WRITE_ENABLED, LOW);
-    delayMicroseconds(1);
-    digitalWrite(SRAM_WRITE_ENABLED, HIGH);
+    fastDigitalWrite(SR_STORAGE_CLK, LOW);
+    fastDigitalWrite(SR_STORAGE_CLK, HIGH);
+    fastDigitalWrite(SR_STORAGE_CLK, LOW);
+
+    fastDigitalWrite(SRAM_WRITE_ENABLED, HIGH);
+    fastDigitalWrite(SRAM_WRITE_ENABLED, LOW);
+    fastDigitalWrite(SRAM_WRITE_ENABLED, HIGH);
 }
 
-} // namespace anonymous
+} // namespace
 
 bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     uint8_t buffer[STREAM_BUFFER_SIZE];
@@ -51,6 +76,9 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     if (size > ROM_SIZE)
         return false; // big file!
 
+    digitalWrite(SRAM_CHIP_ENABLED, HIGH);
+    pinMode(SRAM_CHIP_ENABLED, OUTPUT);
+
     pinMode(SR_DATA_OUTPUT_ENABLED, OUTPUT);
     pinMode(SR_ADDR_OUTPUT_ENABLED, OUTPUT);
 
@@ -61,17 +89,11 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
 
     digitalWrite(SR_STORAGE_CLK, LOW);
     pinMode(SR_STORAGE_CLK, OUTPUT);
-    
+
     digitalWrite(SRAM_WRITE_ENABLED, HIGH);
     pinMode(SRAM_WRITE_ENABLED, OUTPUT);
 
-    digitalWrite(SRAM_OUTPUT_ENABLED, HIGH);
-    pinMode(SRAM_OUTPUT_ENABLED, OUTPUT);
-    
-    pinMode(IO7, INPUT);
-
-    // FIXME: we must also use this signal to tri-state the address and data lines
-    // from the amstrad CPC (using tri-state buffers??)
+    digitalWrite(SRAM_CHIP_ENABLED, LOW);
     digitalWrite(SR_DATA_OUTPUT_ENABLED, LOW);
     digitalWrite(SR_ADDR_OUTPUT_ENABLED, LOW);
 
@@ -84,12 +106,12 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
             writeSRAMByte(address, buffer[i], lower);
             address++;
         }
-        address += bytes;
 
         uint8_t upt = (address * 10L) / size;
         progress(upt);
     }
 
+    digitalWrite(SRAM_CHIP_ENABLED, HIGH);
     digitalWrite(SR_DATA_OUTPUT_ENABLED, HIGH);
     digitalWrite(SR_ADDR_OUTPUT_ENABLED, HIGH);
 

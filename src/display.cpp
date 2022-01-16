@@ -16,7 +16,15 @@ void printInit() {
     _display.println();
 }
 
-void printCurrentROMs(String lower_rom, String upper_rom) {
+void printDebug(const String& msg) {
+    _display.clear();
+    _display.setFont(System5x7);
+    _display.println(F("=== ROM Debug ==="));
+    _display.println();
+    _display.println(msg);
+}
+
+void printCurrentROMs(const String& lower_rom, const String& upper_rom) {
     _display.clear();
 
     _display.setFont(System5x7);
@@ -45,7 +53,7 @@ void printCurrentROMs(String lower_rom, String upper_rom) {
     _display.println(" ]");
 }
 
-void printFilename(String prev, String curr, String next) {
+void printFilename(const String& prev, const String& curr, const String& next) {
     if (curr == "") {
         _display.clear();
         _display.setFont(Verdana12);
@@ -76,7 +84,7 @@ void printFilename(String prev, String curr, String next) {
     _display.println(next == "" ? "-" : next);
 }
 
-void printConfirmationMsg(String filename) {
+void printConfirmationMsg(const String& filename) {
     _display.clear();
     _display.setFont(System5x7);
     _display.println(F("=== Configure ROM ==="));
@@ -102,7 +110,7 @@ void printUpperLowerSelection(bool higher) {
     }
 }
 
-void printStartLoading(String filename) {
+void printStartLoading(const String& filename) {
     _display.clear();
     _display.setFont(System5x7);
     _display.println("====== Loading ======");
@@ -116,7 +124,7 @@ void printStartLoading(String filename) {
     _display.println("]");
 }
 
-void printLoadingProgress(String filename, uint8_t progress) {
+void printLoadingProgress(const String& filename, uint8_t progress) {
     _display.setRow(4);
     _display.setCol(4);
 
@@ -159,7 +167,7 @@ void update(const DisplayState &state, const DisplayData &data) {
         printCurrentROMs(data.m_lower_rom, data.m_upper_rom);
         break;
     }
-    case BROWSE:
+    case BROWSE: {
         DEBUG_PRINT("Prev: ");
         DEBUG_PRINTLN(data.m_prev_filename);
         DEBUG_PRINT("Current: ");
@@ -169,16 +177,18 @@ void update(const DisplayState &state, const DisplayData &data) {
 
         printFilename(data.m_prev_filename, data.m_current_filename, data.m_next_filename);
         break;
-    case CONFIRM:
+    }
+    case CONFIRM: {
         if (currentState == CONFIRM) {
             printUpperLowerSelection(data.m_bank_select);
         } else {
             printConfirmationMsg(data.m_current_filename);
         }
         break;
+    }
     case CONFIG:
         printSave();
-    case LOADING:
+    case LOADING: {
         if (data.m_load_state == LoadState::STARTED) {
             printStartLoading(data.m_current_filename);
         } else if (data.m_load_state == LoadState::FINISHED) {
@@ -187,6 +197,10 @@ void update(const DisplayState &state, const DisplayData &data) {
             printLoadingProgress(data.m_current_filename, data.m_load_progress);
         }
         break;
+    }
+    case DEBUG: {
+        printDebug(data.m_debug_msg);
+    }
     default:
         break;
     }

@@ -56,9 +56,6 @@ File findFile(String &filename) {
         }
 
         if (!entry.isDirectory()) {
-            DEBUG_PRINT(filename);
-            DEBUG_PRINT("=");
-            DEBUG_PRINTLN(entry.name());
             if (filename.equalsIgnoreCase(entry.name())) {
                 return entry;
             }

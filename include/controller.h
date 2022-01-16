@@ -7,6 +7,9 @@
 #define BTN_CONFIRM 15
 #define BTN_CANCEL 16
 
+#define PIN_BUSREQ 17
+#define PIN_BUSACK 9
+
 namespace controller {
     void init();
     void loop();

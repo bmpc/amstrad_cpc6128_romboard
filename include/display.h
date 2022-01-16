@@ -14,7 +14,8 @@ enum DisplayState {
     BROWSE = 3,
     CONFIRM = 4,
     LOADING = 5,
-    CONFIG = 6
+    CONFIG = 6,
+    DEBUG = 7
 };
 
 enum LoadState {
@@ -35,6 +36,7 @@ struct DisplayData {
     bool m_bank_select;
     LoadState m_load_state;
     bool m_load_error;
+    String m_debug_msg;
 
     inline static DisplayData withLowerAndUpperRoms(const String &lower, const String &upper) {
         DisplayData dd;
@@ -71,6 +73,12 @@ struct DisplayData {
         DisplayData dd;
         dd.m_current_filename = current;
         dd.m_bank_select = bank_select;
+        return dd;
+    }
+
+    inline static DisplayData withDebugMsg(const String &msg) {
+        DisplayData dd;
+        dd.m_debug_msg = msg;
         return dd;
     }
 };

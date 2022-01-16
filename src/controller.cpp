@@ -89,6 +89,7 @@ bool loadRom(String &filename, bool lower) {
         local_storage::erase(lower);
         return false;
     } else {
+        // bool success = eeprom::flash(romFile, lower, [](uint8_t prog) {
         bool success = sram::load(romFile, lower, [](uint8_t prog) {
             updateDisplay(LOADING, DisplayData::withLoadProgress(LoadState::PROGRESS, prog));
         });
@@ -106,6 +107,11 @@ bool loadRom(String &filename, bool lower) {
 }
 
 void loadRoms() {
+    // this wait should not be necessary as ages have passed after we put the BUSREQ LOW...
+    while (digitalRead(PIN_BUSACK) != LOW) {
+        delay(10);
+    }
+
     local_storage::RomPair pair = local_storage::load();
 
     bool success = true;
@@ -119,7 +125,7 @@ void loadRoms() {
 
         updateDisplay(LOADING, DisplayData::withLoadProgress("", 0, LoadState::FINISHED, !success));
 
-        // TODO set z80 halt state HIGH
+        digitalWrite(PIN_BUSREQ, HIGH);
 
         delay(2000); // wait for 1s so that user can see if there was an error loading a ROM
     }
@@ -132,23 +138,22 @@ void loadRoms() {
 void init() {
     DEBUG_PRINTLN("Initializing ROM Board...");
 
+    configCommon();
+
     display::setup();
     updateDisplay(INIT, DisplayData());
-    
+
     file_iterator::setupSD();
 
-    pinMode(BTN_INT, INPUT_PULLUP);
-    pinMode(BTN_BROWSE, OUTPUT);
-    digitalWrite(BTN_BROWSE, LOW);
+    pinMode(PIN_BUSACK, INPUT_PULLUP);
+    digitalWrite(PIN_BUSREQ, LOW);
+    pinMode(PIN_BUSREQ, OUTPUT);
 
     attachInterrupt(digitalPinToInterrupt(BTN_INT), &intButtonHandler, FALLING);
 
     delay(1000);
 
     loadRoms();
-
-    // TODO
-
 }
 
 void browseNext() {

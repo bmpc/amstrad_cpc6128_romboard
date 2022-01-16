@@ -24,6 +24,7 @@ void setData(uint8_t data) {
     shiftOut(SR_SERIAL_INPUT, SR_CLK, LSBFIRST, data);
 }
 
+/*
 void waitForWrite(uint8_t latched, uint16_t addr) {
     digitalWrite(SR_DATA_OUTPUT_ENABLED, HIGH);
     digitalWrite(EEPROM_OUTPUT_ENABLED, LOW);
@@ -37,7 +38,8 @@ void waitForWrite(uint8_t latched, uint16_t addr) {
     digitalWrite(SR_DATA_OUTPUT_ENABLED, LOW);
     delayMicroseconds(1);
 }
-
+*/
+/*
 void fastWriteEEPROMByte(uint16_t addr, uint8_t data, bool lower) {
     __asm__ __volatile__(
         ".equ PORTD, 0x0B                    \n"
@@ -53,23 +55,35 @@ void fastWriteEEPROMByte(uint16_t addr, uint8_t data, bool lower) {
         ::"r" (addr, data, lower):
     );
 }
+*/
 
 void writeEEPROMByte(uint16_t addr, uint8_t data, bool lower) {
     setData(data);
     setAddress(addr, lower);
 
+    digitalWrite(SR_STORAGE_CLK, LOW);
+    delayMicroseconds(1);
     digitalWrite(SR_STORAGE_CLK, HIGH);
     delayMicroseconds(1);
     digitalWrite(SR_STORAGE_CLK, LOW);
-    delayMicroseconds(1);
-    
+    delayMicroseconds(100);
+
+    delay(2);
+
     // This is in fact a page write cycle for each byte. 
     // The code within this block takes much longer than 150 micros.
+    digitalWrite(EEPROM_WRITE_ENABLED, HIGH);
+    delayMicroseconds(10);
     digitalWrite(EEPROM_WRITE_ENABLED, LOW);
-    delayMicroseconds(1);
+    //delayMicroseconds(10);
+    delay(2);
     digitalWrite(EEPROM_WRITE_ENABLED, HIGH);
     
-    waitForWrite(data, addr);
+    //delayMicroseconds(100);
+
+    delay(5);
+
+    //waitForWrite(data, addr);
 }
 
 void writeEEPROMBytePage(uint8_t *page, size_t size, uint16_t address, bool lower) {
@@ -79,7 +93,7 @@ void writeEEPROMBytePage(uint8_t *page, size_t size, uint16_t address, bool lowe
     }
     
     // there is no point in waiting here as each byte is written within a page write 
-    // delay(20);
+    //delay(20);
     // waitForWrite(page[i], address);
 }
 
@@ -96,6 +110,9 @@ bool flash(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     if (size > ROM_SIZE)
         return false; // big file!
 
+    digitalWrite(EEPROM_CHIP_ENABLED, HIGH);
+    pinMode(EEPROM_CHIP_ENABLED, OUTPUT);
+
     pinMode(SR_DATA_OUTPUT_ENABLED, OUTPUT);
     pinMode(SR_ADDR_OUTPUT_ENABLED, OUTPUT);
 
@@ -110,13 +127,14 @@ bool flash(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     digitalWrite(EEPROM_WRITE_ENABLED, HIGH);
     pinMode(EEPROM_WRITE_ENABLED, OUTPUT);
 
-    digitalWrite(EEPROM_OUTPUT_ENABLED, HIGH);
-    pinMode(EEPROM_OUTPUT_ENABLED, OUTPUT);
+    //digitalWrite(EEPROM_OUTPUT_ENABLED, HIGH);
+    //pinMode(EEPROM_OUTPUT_ENABLED, OUTPUT);
     
-    pinMode(IO7, INPUT);
+    //pinMode(IO7, INPUT);
 
     // FIXME: we must also use this signal to tri-state the address and data lines
     // from the amstrad CPC (using tri-state buffers??)
+    digitalWrite(EEPROM_CHIP_ENABLED, LOW);
     digitalWrite(SR_DATA_OUTPUT_ENABLED, LOW);
     digitalWrite(SR_ADDR_OUTPUT_ENABLED, LOW);
 
@@ -132,6 +150,7 @@ bool flash(File &romRile, const bool lower, void (*progress)(uint8_t)) {
         progress(upt);
     }
 
+    digitalWrite(EEPROM_CHIP_ENABLED, HIGH);
     digitalWrite(SR_DATA_OUTPUT_ENABLED, HIGH);
     digitalWrite(SR_ADDR_OUTPUT_ENABLED, HIGH);
 
