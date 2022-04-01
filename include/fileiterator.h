@@ -19,6 +19,7 @@ namespace file_iterator {
     void setupSD();
     void destroy();
     void moveNext();
+    void movePrevious();
     void reset();
 };
 

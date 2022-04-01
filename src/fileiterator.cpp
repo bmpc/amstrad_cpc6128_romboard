@@ -2,6 +2,9 @@
 #include "fileiterator.h"
 #include "log.h"
 
+#define BUFFER_SIZE 20
+
+
 namespace file_iterator {
 namespace {
 File m_root;
@@ -9,6 +12,34 @@ File m_current_entry;
 String m_prev;
 String m_current;
 String m_next;
+
+String m_filename_buffer[BUFFER_SIZE]; // ~ 200 bytes
+
+void _fillBuffer(int position) {
+    int idx = 0;
+
+    while (true) {
+        File entry = m_root.openNextFile();
+        if (!entry) { // No more files
+            return;
+        }
+
+        if (!entry.isDirectory()) {
+            String name = String(entry.name());
+            entry.close();
+
+            m_filename_buffer[idx++] = name;
+        }
+
+        entry.close();
+
+        if (idx == BUFFER_SIZE) {
+            return;
+        }
+    }
+
+    return;
+}
 
 String _getNextFilename() {
     while (true) {
@@ -24,6 +55,28 @@ String _getNextFilename() {
             return name;
         }
 
+        entry.close();
+    }
+
+    return "";
+}
+
+String _getPreviousFilename() {
+    String prevEntryName = "";
+    File entry;
+    m_root.rewindDirectory();
+    while (true) {
+        entry = m_root.openNextFile();
+        if (!entry) { // No more files
+            return "";
+        }
+
+        if (!entry.isDirectory()) {
+            if (m_prev.equals(entry.name()))
+                return prevEntryName;
+        }
+
+        prevEntryName = entry.name();
         entry.close();
     }
 
@@ -76,6 +129,18 @@ void moveNext() {
         m_prev = m_current;
         m_current = m_next;
         m_next = _getNextFilename();
+    }
+}
+
+void movePrevious() {
+    if (m_current == "" || m_prev == "") {
+        reset();
+        m_current = _getNextFilename();
+        m_next = _getNextFilename();
+    } else {
+        m_next = m_current;
+        m_current = m_prev;
+        m_prev = _getPreviousFilename();
     }
 }
 

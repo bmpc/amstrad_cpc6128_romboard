@@ -79,8 +79,7 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     digitalWrite(SRAM_CHIP_ENABLED, HIGH);
     pinMode(SRAM_CHIP_ENABLED, OUTPUT);
 
-    pinMode(SR_DATA_OUTPUT_ENABLED, OUTPUT);
-    pinMode(SR_ADDR_OUTPUT_ENABLED, OUTPUT);
+    pinMode(SR_BUS_OUTPUT_ENABLED, OUTPUT);
 
     pinMode(SR_SERIAL_INPUT, OUTPUT);
 
@@ -94,8 +93,7 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     pinMode(SRAM_WRITE_ENABLED, OUTPUT);
 
     digitalWrite(SRAM_CHIP_ENABLED, LOW);
-    digitalWrite(SR_DATA_OUTPUT_ENABLED, LOW);
-    digitalWrite(SR_ADDR_OUTPUT_ENABLED, LOW);
+    digitalWrite(SR_BUS_OUTPUT_ENABLED, LOW);
 
     uint16_t address = 0;
 
@@ -112,8 +110,7 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
     }
 
     digitalWrite(SRAM_CHIP_ENABLED, HIGH);
-    digitalWrite(SR_DATA_OUTPUT_ENABLED, HIGH);
-    digitalWrite(SR_ADDR_OUTPUT_ENABLED, HIGH);
+    digitalWrite(SR_BUS_OUTPUT_ENABLED, HIGH);
 
     return true;
 }

@@ -5,6 +5,7 @@
 #include "fileiterator.h"
 #include "localstorage.h"
 #include "log.h"
+#include "ezButton.h"
 
 using namespace display;
 
@@ -15,6 +16,11 @@ bool m_bank_selector = 0;
 
 volatile uint8_t m_int_btn = 0;
 uint64_t m_lastFire = 0;
+
+ezButton btnUp(BTN_UP);
+ezButton btnDown(BTN_DOWN);
+ezButton btnConfirm(BTN_CONFIRM);
+ezButton btnCancel(BTN_CANCEL);
 
 void updateDisplay(DisplayState state, DisplayData display_data) {
     m_state = state;
@@ -28,51 +34,6 @@ DisplayData getListDisplayData() {
 
 DisplayData getBrowseDisplayData() {
     return DisplayData::withBrowseFiles(file_iterator::getPreviousFilename(), file_iterator::getCurrentFilename(), file_iterator::getNextFilename());
-}
-
-void configDistinct() {
-    pinMode(BTN_INT, OUTPUT);
-    digitalWrite(BTN_INT, LOW);
-    pinMode(BTN_BROWSE, INPUT_PULLUP);
-    pinMode(BTN_CONFIRM, INPUT_PULLUP);
-    pinMode(BTN_CANCEL, INPUT_PULLUP);
-}
-
-void configCommon() {
-    pinMode(BTN_INT, INPUT_PULLUP);
-
-    pinMode(BTN_BROWSE, OUTPUT);
-    digitalWrite(BTN_BROWSE, LOW);
-    pinMode(BTN_CONFIRM, OUTPUT);
-    digitalWrite(BTN_CONFIRM, LOW);
-    pinMode(BTN_CANCEL, OUTPUT);
-    digitalWrite(BTN_CANCEL, LOW);
-}
-
-void intButtonHandler() {
-    if (millis() - m_lastFire < 200) { // Debounce
-        return;
-    }
-    m_lastFire = millis();
-
-    configDistinct();
-
-    if (!digitalRead(BTN_BROWSE)) {
-        DEBUG_PRINTLN("INTERRUPT BTN_BROWSE!");
-        m_int_btn = 1;
-    }
-
-    if (!digitalRead(BTN_CONFIRM)) {
-        DEBUG_PRINTLN("INTERRUPT BTN_CONFIRM!");
-        m_int_btn = 2;
-    }
-
-    if (!digitalRead(BTN_CANCEL)) {
-        DEBUG_PRINTLN("INTERRUPT BTN_CANCEL!");
-        m_int_btn = 3;
-    }
-
-    configCommon();
 }
 
 bool loadRom(String &filename, bool lower) {
@@ -138,7 +99,9 @@ void loadRoms() {
 void init() {
     DEBUG_PRINTLN("Initializing ROM Board...");
 
-    configCommon();
+    btnDown.setDebounceTime(50);
+    btnConfirm.setDebounceTime(50);
+    btnCancel.setDebounceTime(50);
 
     display::setup();
     updateDisplay(INIT, DisplayData());
@@ -149,14 +112,12 @@ void init() {
     digitalWrite(PIN_BUSREQ, LOW);
     pinMode(PIN_BUSREQ, OUTPUT);
 
-    attachInterrupt(digitalPinToInterrupt(BTN_INT), &intButtonHandler, FALLING);
-
     delay(1000);
 
     loadRoms();
 }
 
-void browseNext() {
+void next() {
     if (m_state == LIST) {
         file_iterator::reset();
         file_iterator::moveNext();
@@ -164,6 +125,22 @@ void browseNext() {
         updateDisplay(BROWSE, getBrowseDisplayData());
     } else if (m_state == BROWSE) {
         file_iterator::moveNext(); // Move to next filename
+
+        updateDisplay(BROWSE, getBrowseDisplayData());
+    } else if (m_state == CONFIRM) {
+        m_bank_selector = !m_bank_selector;
+        updateDisplay(CONFIRM, DisplayData::withConfirmFile(file_iterator::getCurrentFilename(), m_bank_selector));
+    }
+}
+
+void previous() {
+    if (m_state == LIST) {
+        file_iterator::reset();
+        file_iterator::moveNext();
+        m_bank_selector = 0;
+        updateDisplay(BROWSE, getBrowseDisplayData());
+    } else if (m_state == BROWSE) {
+        file_iterator::movePrevious(); // Move to the previous filename
 
         updateDisplay(BROWSE, getBrowseDisplayData());
     } else if (m_state == CONFIRM) {
@@ -217,20 +194,18 @@ void cancel() {
 }
 
 void loop() {
-    if (m_int_btn > 0) {
-        switch (m_int_btn) {
-        case 1:
-            browseNext();
-            break;
-        case 2:
-            confirm();
-            break;
-        case 3:
-            cancel();
-            break;
-        }
+    btnDown.loop();
+    btnConfirm.loop();
+    btnCancel.loop();
 
-        m_int_btn = 0;
+    if (btnCancel.isPressed()) {
+        cancel();
+    } else if (btnUp.isPressed()) {
+        previous();
+    } else if (btnDown.isPressed()) {
+        next();
+    } else if (btnConfirm.isPressed()){
+        confirm();
     }
 }
 

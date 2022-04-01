@@ -14,10 +14,9 @@
 #define SRAM_CHIP_ENABLED 0
 
 #define SR_SERIAL_INPUT 3
-#define SR_ADDR_OUTPUT_ENABLED 6
 #define SR_STORAGE_CLK 7
 #define SR_CLK 8
-#define SR_DATA_OUTPUT_ENABLED 10
+#define SR_BUS_OUTPUT_ENABLED 10 // Data and Adress lines
 
 namespace sram {
 bool load(File &, const bool, void (*)(uint8_t));
