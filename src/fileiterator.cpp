@@ -15,32 +15,6 @@ String m_next;
 
 String m_filename_buffer[BUFFER_SIZE]; // ~ 200 bytes
 
-void _fillBuffer(int position) {
-    int idx = 0;
-
-    while (true) {
-        File entry = m_root.openNextFile();
-        if (!entry) { // No more files
-            return;
-        }
-
-        if (!entry.isDirectory()) {
-            String name = String(entry.name());
-            entry.close();
-
-            m_filename_buffer[idx++] = name;
-        }
-
-        entry.close();
-
-        if (idx == BUFFER_SIZE) {
-            return;
-        }
-    }
-
-    return;
-}
-
 String _getNextFilename() {
     while (true) {
         File entry = m_root.openNextFile();
@@ -64,19 +38,29 @@ String _getNextFilename() {
 String _getPreviousFilename() {
     String prevEntryName = "";
     File entry;
-    m_root.rewindDirectory();
+    uint32_t pos = m_root.position();
+    
+    int prevEntryPos = pos;
     while (true) {
+        prevEntryPos -= sizeof(dir_t);
+        if (prevEntryPos < 0) {
+            m_root.rewindDirectory();
+            return "";
+        }
+
+        m_root.seek(prevEntryPos);
+
         entry = m_root.openNextFile();
-        if (!entry) { // No more files
+        if (!entry) { // first file is a dir
             return "";
         }
 
         if (!entry.isDirectory()) {
-            if (m_prev.equals(entry.name()))
-                return prevEntryName;
+            prevEntryName = entry.name();
+            entry.close();
+            return prevEntryName;
         }
-
-        prevEntryName = entry.name();
+        
         entry.close();
     }
 
