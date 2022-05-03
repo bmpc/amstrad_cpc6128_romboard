@@ -15,7 +15,7 @@ DisplayState m_state = INIT;
 bool m_bank_selector = 0;
 
 volatile uint8_t m_int_btn = 0;
-uint64_t m_lastFire = 0;
+// uint64_t m_lastFire = 0;
 
 ezButton btnUp(BTN_UP);
 ezButton btnDown(BTN_DOWN);
@@ -99,6 +99,7 @@ void loadRoms() {
 void init() {
     DEBUG_PRINTLN("Initializing ROM Board...");
 
+    btnUp.setDebounceTime(50);
     btnDown.setDebounceTime(50);
     btnConfirm.setDebounceTime(50);
     btnCancel.setDebounceTime(50);
@@ -194,6 +195,7 @@ void cancel() {
 }
 
 void loop() {
+    btnUp.loop();
     btnDown.loop();
     btnConfirm.loop();
     btnCancel.loop();

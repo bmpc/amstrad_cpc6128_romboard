@@ -40,7 +40,7 @@ String _getPreviousFilename() {
     File entry;
     uint32_t pos = m_root.position();
     
-    int prevEntryPos = pos;
+    int prevEntryPos = pos - (sizeof(dir_t) * 3);
     while (true) {
         prevEntryPos -= sizeof(dir_t);
         if (prevEntryPos < 0) {
@@ -48,16 +48,24 @@ String _getPreviousFilename() {
             return "";
         }
 
-        m_root.seek(prevEntryPos);
+        bool res = m_root.seek(prevEntryPos);
+
+        if (!res) {
+            return "FALSE";
+        }
 
         entry = m_root.openNextFile();
-        if (!entry) { // first file is a dir
+        if (!entry) {
             return "";
         }
 
         if (!entry.isDirectory()) {
             prevEntryName = entry.name();
             entry.close();
+
+            // set the current position again
+            m_root.seek(pos - sizeof(dir_t));
+
             return prevEntryName;
         }
         
