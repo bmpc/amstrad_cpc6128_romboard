@@ -2,78 +2,119 @@
 #include "fileiterator.h"
 #include "log.h"
 
-#define BUFFER_SIZE 20
-
-
 namespace file_iterator {
 namespace {
+
+struct FileInfo {
+    String name;
+    uint32_t pos;
+
+    operator bool() {
+        return pos != 0;
+    }
+};
+
+// too fucking dangerous
+struct FileLayout {
+    int write_error;             // Print
+    unsigned long _timeout;      // Stream
+    unsigned long _startMillis;  // Stream
+    void * x;                    // unknown
+    char _name[13];              // File
+    SdFile *_file;               // File
+};
+
 File m_root;
-File m_current_entry;
-String m_prev;
-String m_current;
-String m_next;
 
-String m_filename_buffer[BUFFER_SIZE]; // ~ 200 bytes
+FileInfo m_prev;
+FileInfo m_current;
+FileInfo m_next;
 
-String _getNextFilename() {
-    while (true) {
-        File entry = m_root.openNextFile();
-        if (!entry) { // No more files
-            return "";
-        }
+FileInfo getNextFileInfo(const FileLayout &f, uint32_t pos) {
+  dir_t p;
 
-        if (!entry.isDirectory()) {
-            String name = String(entry.name());
-            entry.close();
+  if (pos == 0) {
+    f._file->rewind();
+  } else {
+    f._file->seekSet(pos);
+  }
 
-            return name;
-        }
-
-        entry.close();
+  while (f._file->readDir(&p) > 0) {
+    // done if past last used entry
+    if (p.name[0] == DIR_NAME_FREE) {
+      return FileInfo();
     }
 
-    return "";
+    // skip deleted entry and entries for . and  ..
+    if (p.name[0] == DIR_NAME_DELETED || p.name[0] == '.') {
+      continue;
+    }
+
+    if (DIR_IS_FILE(&p)) {
+      // print file name with possible blank fill
+      char name[13];
+      f._file->dirName(p, name);
+
+      return FileInfo{name, f._file->curPosition() - sizeof(dir_t) };
+    }
+  }
+
+  return FileInfo();
 }
 
-String _getPreviousFilename() {
-    String prevEntryName = "";
-    File entry;
-    uint32_t pos = m_root.position();
+FileInfo getPreviousFileInfo(const FileLayout &f, uint32_t pos) {
+  dir_t p;
+
+  int currentPos = pos - sizeof(dir_t);
+  f._file->seekSet(currentPos);
+
+  while (f._file->readDir(&p) > 0) {
+    // done if past last used entry
+    if (p.name[0] == DIR_NAME_FREE) {
+      return FileInfo();
+    }
+
+    if (DIR_IS_FILE(&p) && !(p.name[0] == DIR_NAME_DELETED || p.name[0] == '.') && f._file->curPosition() < pos) {
+      // print file name with possible blank fill
+      char name[13];
+      f._file->dirName(p, name);
+
+      return {name, (uint32_t)(f._file->curPosition() - sizeof(dir_t))};
+    }
+
+    currentPos -= sizeof(dir_t); // not yet ...
+    f._file->seekSet(currentPos);
     
-    int prevEntryPos = pos - (sizeof(dir_t) * 3);
-    while (true) {
-        prevEntryPos -= sizeof(dir_t);
-        if (prevEntryPos < 0) {
-            m_root.rewindDirectory();
-            return "";
+  }
+
+  return FileInfo();
+}
+
+FileInfo _getNextFile() {
+    int pos;
+    if (!m_current) {
+        pos = 0;
+    } else {
+        if (m_next) {
+            pos = m_next.pos + sizeof(dir_t);
+        } else {
+            pos = m_current.pos + sizeof(dir_t);
         }
-
-        bool res = m_root.seek(prevEntryPos);
-
-        if (!res) {
-            return "FALSE";
-        }
-
-        entry = m_root.openNextFile();
-        if (!entry) {
-            return "";
-        }
-
-        if (!entry.isDirectory()) {
-            prevEntryName = entry.name();
-            entry.close();
-
-            // set the current position again
-            m_root.seek(pos - sizeof(dir_t));
-
-            return prevEntryName;
-        }
-        
-        entry.close();
     }
 
-    return "";
+    FileLayout * myFile = reinterpret_cast<FileLayout*>(&m_root);
+    return getNextFileInfo(*myFile, pos);
 }
+
+FileInfo _getPreviousFile() {
+    if (!m_current || !m_prev) {
+        return FileInfo();
+    }
+
+    FileLayout * myFile = reinterpret_cast<FileLayout*>(&m_root);
+    return getPreviousFileInfo(*myFile, m_prev.pos);
+}
+
 } // namespace anonymous
 
 void setupSD() {
@@ -113,26 +154,26 @@ File findFile(String &filename) {
 }
 
 void moveNext() {
-    if (m_current == "" || m_next == "") {
+    if (!m_current || !m_next) {
         reset();
-        m_current = _getNextFilename();
-        m_next = _getNextFilename();
+        m_current = _getNextFile();
+        m_next = _getNextFile();
     } else {
         m_prev = m_current;
         m_current = m_next;
-        m_next = _getNextFilename();
+        m_next = _getNextFile();
     }
 }
 
 void movePrevious() {
-    if (m_current == "" || m_prev == "") {
+    if (!m_current || !m_prev) {
         reset();
-        m_current = _getNextFilename();
-        m_next = _getNextFilename();
+        m_current = _getNextFile();
+        m_next = _getNextFile();
     } else {
         m_next = m_current;
         m_current = m_prev;
-        m_prev = _getPreviousFilename();
+        m_prev = _getPreviousFile();
     }
 }
 
@@ -140,41 +181,27 @@ void reset() {
     m_root.close();
     m_root = SD.open("/");
 
-    m_current = "";
-    m_prev = "";
-    m_next = "";
+    m_current = FileInfo();
+    m_prev = FileInfo();
+    m_next = FileInfo();
 }
 
 String getCurrentFilename() {
-    return m_current;
+    return m_current.name;
 }
 
 String getPreviousFilename() {
-    return m_prev;
+    return m_prev.name;
 }
 
 String getNextFilename() {
-    return m_next;
+    return m_next.name;
 }
 
 File getCurrentFile() {
-    File entry;
-    m_root.rewindDirectory();
-    while (true) {
-        entry = m_root.openNextFile();
-        if (!entry) { // No more files
-            return entry;
-        }
-
-        if (!entry.isDirectory()) {
-            if (m_current.equals(entry.name()))
-                return entry;
-        }
-
-        entry.close();
-    }
-
-    return entry;
+    char name[13];
+    m_current.name.toCharArray(name, 13);
+    return SD.open(name, FILE_READ);
 }
 
 } // namespace file_iterator
