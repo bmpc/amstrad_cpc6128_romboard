@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP SN74HC21N
+D Dual 4-Input Positive-AND Gates
+K
+F http://www.ti.com/lit/gpn/sn74hc21
+$ENDCMP
+#
+#End Doc Library

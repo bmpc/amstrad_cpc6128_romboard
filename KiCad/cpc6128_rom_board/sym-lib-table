@@ -1,0 +1,8 @@
+(sym_lib_table
+  (lib (name "SN74HC02N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC02N/SN74HC02N.kicad_sym")(options "")(descr ""))
+  (lib (name "SN74HC21N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC21N/SN74HC21N.kicad_sym")(options "")(descr ""))
+  (lib (name "SN74HC74N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC74N/SN74HC74N.kicad_sym")(options "")(descr ""))
+  (lib (name "SN74HC595N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC595N/SN74HC595N.kicad_sym")(options "")(descr ""))
+  (lib (name "SN74HC126N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC126N/SN74HC126N.kicad_sym")(options "")(descr ""))
+  (lib (name "0.96inchOLED128x64")(type "KiCad")(uri "${KIPRJMOD}/components/0.96inchOLED128x64/0.96inchOLED128x64.kicad_sym")(options "")(descr ""))
+)

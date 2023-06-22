@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP SN74HC02N
+D Quad 2i/p NOR gate,SN74HC02N DIP14 25pcs
+K
+F https://datasheet.datasheetarchive.com/originals/distributors/SFDatasheet-6/sf-000133830.pdf
+$ENDCMP
+#
+#End Doc Library

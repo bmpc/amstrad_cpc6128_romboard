@@ -2,35 +2,9 @@
 #include "fileiterator.h"
 #include "log.h"
 
-namespace file_iterator {
-namespace {
+namespace cpc_rom_board {
 
-struct FileInfo {
-    String name;
-    uint32_t pos;
-
-    operator bool() {
-        return pos != 0;
-    }
-};
-
-// too fucking dangerous
-struct FileLayout {
-    int write_error;             // Print
-    unsigned long _timeout;      // Stream
-    unsigned long _startMillis;  // Stream
-    void * x;                    // unknown
-    char _name[13];              // File
-    SdFile *_file;               // File
-};
-
-File m_root;
-
-FileInfo m_prev;
-FileInfo m_current;
-FileInfo m_next;
-
-FileInfo getNextFileInfo(const FileLayout &f, uint32_t pos) {
+FileInfo FileIterator::getNextFileInfo(const FileLayout &f, uint32_t pos) {
   dir_t p;
 
   if (pos == 0) {
@@ -62,7 +36,7 @@ FileInfo getNextFileInfo(const FileLayout &f, uint32_t pos) {
   return FileInfo();
 }
 
-FileInfo getPreviousFileInfo(const FileLayout &f, uint32_t pos) {
+FileInfo FileIterator::getPreviousFileInfo(const FileLayout &f, uint32_t pos) {
   dir_t p;
 
   int currentPos = pos - sizeof(dir_t);
@@ -90,7 +64,7 @@ FileInfo getPreviousFileInfo(const FileLayout &f, uint32_t pos) {
   return FileInfo();
 }
 
-FileInfo _getNextFile() {
+FileInfo FileIterator::_getNextFile() {
     int pos;
     if (!m_current) {
         pos = 0;
@@ -106,7 +80,7 @@ FileInfo _getNextFile() {
     return getNextFileInfo(*myFile, pos);
 }
 
-FileInfo _getPreviousFile() {
+FileInfo FileIterator::_getPreviousFile() {
     if (!m_current || !m_prev) {
         return FileInfo();
     }
@@ -115,9 +89,7 @@ FileInfo _getPreviousFile() {
     return getPreviousFileInfo(*myFile, m_prev.pos);
 }
 
-} // namespace anonymous
-
-void setupSD() {
+void FileIterator::setupSD() {
     if (!SD.begin(SD_CHIP_SELECT)) {
         DEBUG_PRINTLN("SD card initialization failed!");
         while (1)
@@ -127,33 +99,15 @@ void setupSD() {
     DEBUG_PRINTLN("SD card initialization complete.");
 }
 
-void destroy() {
+void FileIterator::destroy() {
     m_root.close();
 }
 
-File findFile(String &filename) {
-    File entry;
-    
-    reset();
-    while (true) {
-        entry = m_root.openNextFile();
-        if (!entry) { // No more files
-            return entry;
-        }
-
-        if (!entry.isDirectory()) {
-            if (filename.equalsIgnoreCase(entry.name())) {
-                return entry;
-            }
-        }
-
-        entry.close();
-    }
-
-    return entry;
+File FileIterator::findFile(const char* filename) {
+    return SD.open(filename, O_READ);
 }
 
-void moveNext() {
+void FileIterator::moveNext() {
     if (!m_current || !m_next) {
         reset();
         m_current = _getNextFile();
@@ -165,7 +119,7 @@ void moveNext() {
     }
 }
 
-void movePrevious() {
+void FileIterator::movePrevious() {
     if (!m_current || !m_prev) {
         reset();
         m_current = _getNextFile();
@@ -177,7 +131,7 @@ void movePrevious() {
     }
 }
 
-void reset() {
+void FileIterator::reset() {
     m_root.close();
     m_root = SD.open("/");
 
@@ -186,22 +140,22 @@ void reset() {
     m_next = FileInfo();
 }
 
-String getCurrentFilename() {
+String FileIterator::getCurrentFilename() {
     return m_current.name;
 }
 
-String getPreviousFilename() {
+String FileIterator::getPreviousFilename() {
     return m_prev.name;
 }
 
-String getNextFilename() {
+String FileIterator::getNextFilename() {
     return m_next.name;
 }
 
-File getCurrentFile() {
+File FileIterator::getCurrentFile() {
     char name[13];
     m_current.name.toCharArray(name, 13);
     return SD.open(name, FILE_READ);
 }
 
-} // namespace file_iterator
+} // namespace

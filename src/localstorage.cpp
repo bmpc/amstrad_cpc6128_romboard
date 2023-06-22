@@ -3,9 +3,8 @@
 #include <EEPROM.h>
 
 namespace local_storage {
-String _loadRom(uint8_t rom_ix) {
+void _loadRom(uint8_t rom_ix, char* filename) {
     if (EEPROM.read(rom_ix) == 1) {
-        char filename[13];
         uint8_t i = 0, wr = rom_ix + 1;
         char c;
         
@@ -16,11 +15,7 @@ String _loadRom(uint8_t rom_ix) {
         // make sure we have a string terminator
         if (filename[i] != '\0')
             filename[i] = '\0';
-
-        return String(filename);
     }
-
-    return "";
 }
 
 RomPair load() {
@@ -28,8 +23,9 @@ RomPair load() {
     if (EEPROM.read(0) != INIT_MEGA_FLG) {
         return pair;
     }
-    pair.lowerRom = _loadRom(LOWER_ROM_IX);
-    pair.upperRom = _loadRom(UPPER_ROM_IX);
+    
+    _loadRom(LOWER_ROM_IX, pair.lowerRom);
+    _loadRom(UPPER_ROM_IX, pair.upperRom);
 
     return pair;
 }

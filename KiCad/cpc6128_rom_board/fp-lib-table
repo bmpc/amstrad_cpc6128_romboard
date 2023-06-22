@@ -1,0 +1,8 @@
+(fp_lib_table
+  (lib (name "SN74HC02N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC02N")(options "")(descr ""))
+  (lib (name "SN74HC21N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC21N")(options "")(descr ""))
+  (lib (name "SN74HC74N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC74N")(options "")(descr ""))
+  (lib (name "SN74HC126N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC126N")(options "")(descr ""))
+  (lib (name "SN74HC595N")(type "KiCad")(uri "${KIPRJMOD}/components/SN74HC595N")(options "")(descr ""))
+  (lib (name "CPC6128_ROM_BOARD")(type "KiCad")(uri "${KIPRJMOD}/footprint-lib")(options "")(descr ""))
+)

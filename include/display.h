@@ -8,6 +8,8 @@
 
 #define I2C_ADDRESS 0x3C
 
+namespace cpc_rom_board {
+
 enum DisplayState {
     INIT = 1,
     LIST = 2,
@@ -25,7 +27,6 @@ enum LoadState {
     FINISHED = 4
 };
 
-namespace display {
 struct DisplayData {
     String m_lower_rom;
     String m_upper_rom;
@@ -83,9 +84,29 @@ struct DisplayData {
     }
 };
 
-void setup();
+class Display {
 
-void update(const DisplayState &, const DisplayData &);
-} // namespace display
+public:
+    Display() = default;
+    void setup();
+    void update(const DisplayState &, const DisplayData &);
+
+private:
+    SSD1306AsciiAvrI2c m_display;
+    DisplayState m_current_state;
+
+    void printInit();
+    void printDebug(const String& msg);
+    void printCurrentROMs(const String& lower_rom, const String& upper_rom);
+    void printFilename(const String& prev, const String& curr, const String& next);
+    void printConfirmationMsg(const String& filename);
+    void printUpperLowerSelection(bool higher);
+    void printStartLoading(const String& filename);
+    void printLoadingProgress(const String& filename, uint8_t progress);
+    void printLoadingComplete(bool error);
+    void printSave();
+
+};
+}
 
 #endif

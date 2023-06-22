@@ -5,41 +5,15 @@
 #include "controller.h"
 #include "log.h"
 
+cpc_rom_board::Controller controller;
+
 void setup() {
     setupSerialDebug();
 
     //local_storage::erase(true);
-    //local_storage::erase(false);
-    controller::init();
-
-    /*
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_confirm();
-  delay(2000);
-  interrupt_cancel();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_browseNext();
-  delay(2000);
-  interrupt_confirm();
-  delay(2000);
-  interrupt_confirm();
-  */
+    controller.init();
 }
 
 void loop() {
-    controller::loop();
+    controller.loop();
 }

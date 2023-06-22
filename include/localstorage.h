@@ -13,8 +13,8 @@
  **/
 namespace local_storage {
 struct RomPair {
-    String lowerRom;
-    String upperRom;
+    char lowerRom[13];
+    char upperRom[13];
 };
 
 RomPair load();

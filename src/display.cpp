@@ -2,162 +2,155 @@
 #include "log.h"
 #include <arduino.h>
 
-namespace display {
-namespace {
+namespace cpc_rom_board {
 
-SSD1306AsciiAvrI2c _display;
-
-DisplayState currentState;
-
-void printInit() {
-    _display.clear();
-    _display.setFont(System5x7);
-    _display.println(F("=== ROM board 1.0 ==="));
-    _display.println();
+void Display::printInit() {
+    m_display.clear();
+    m_display.setFont(System5x7);
+    m_display.println(F("=== ROM board 1.0 ==="));
+    m_display.println();
 }
 
-void printDebug(const String& msg) {
-    _display.clear();
-    _display.setFont(System5x7);
-    _display.println(F("=== ROM Debug ==="));
-    _display.println();
-    _display.println(msg);
+void Display::printDebug(const String& msg) {
+    m_display.clear();
+    m_display.setFont(System5x7);
+    m_display.println(F("=== ROM Debug ==="));
+    m_display.println();
+    m_display.println(msg);
 }
 
-void printCurrentROMs(const String& lower_rom, const String& upper_rom) {
-    _display.clear();
+void Display::printCurrentROMs(const String& lower_rom, const String& upper_rom) {
+    m_display.clear();
 
-    _display.setFont(System5x7);
-    _display.println(F("===== Lower ROM ====="));
-    _display.setFont(Verdana12);
-    _display.print("[ ");
+    m_display.setFont(System5x7);
+    m_display.println(F("===== Lower ROM ====="));
+    m_display.setFont(Verdana12);
+    m_display.print("[ ");
     if (lower_rom == "") {
-        _display.print("-");
+        m_display.print("-");
     } else {
-        _display.print(lower_rom);
+        m_display.print(lower_rom);
     }
-    _display.println(" ]");
+    m_display.println(" ]");
 
-    _display.setFont(System5x7);
-    _display.println();
+    m_display.setFont(System5x7);
+    m_display.println();
 
-    _display.setFont(System5x7);
-    _display.println(F("===== Upper ROM ====="));
-    _display.setFont(Verdana12);
-    _display.print("[ ");
+    m_display.setFont(System5x7);
+    m_display.println(F("===== Upper ROM ====="));
+    m_display.setFont(Verdana12);
+    m_display.print("[ ");
     if (upper_rom == "") {
-        _display.print("-");
+        m_display.print("-");
     } else {
-        _display.print(upper_rom);
+        m_display.print(upper_rom);
     }
-    _display.println(" ]");
+    m_display.println(" ]");
 }
 
-void printFilename(const String& prev, const String& curr, const String& next) {
+void Display::printFilename(const String& prev, const String& curr, const String& next) {
     if (curr == "") {
-        _display.clear();
-        _display.setFont(Verdana12);
-        _display.println(F("No ROMs found!"));
+        m_display.clear();
+        m_display.setFont(Verdana12);
+        m_display.println(F("No ROMs found!"));
         return;
     }
 
     if (prev == "") {
-        _display.clear();
-        _display.setFont(System5x7);
-        _display.println(F("==== Select ROM ===="));
-        _display.println();
+        m_display.clear();
+        m_display.setFont(System5x7);
+        m_display.println(F("==== Select ROM ===="));
+        m_display.println();
     } else {
-        _display.clear(0, 150, 2, 50);
-        _display.setRow(2);
+        m_display.clear(0, 150, 2, 50);
+        m_display.setRow(2);
     }
 
-    _display.setFont(Verdana12);
-    _display.print("  ");
-    _display.println(prev == "" ? "-" : prev);
+    m_display.setFont(Verdana12);
+    m_display.print("  ");
+    m_display.println(prev == "" ? "-" : prev);
 
-    //_display.setFont(Callibri15);
-    _display.print("[ ");
-    _display.print(curr);
-    _display.println(" ]");
+    //m_display.setFont(Callibri15);
+    m_display.print("[ ");
+    m_display.print(curr);
+    m_display.println(" ]");
 
-    _display.print("  ");
-    _display.println(next == "" ? "-" : next);
+    m_display.print("  ");
+    m_display.println(next == "" ? "-" : next);
 }
 
-void printConfirmationMsg(const String& filename) {
-    _display.clear();
-    _display.setFont(System5x7);
-    _display.println(F("=== Configure ROM ==="));
-    _display.println();
+void Display::printConfirmationMsg(const String& filename) {
+    m_display.clear();
+    m_display.setFont(System5x7);
+    m_display.println(F("=== Configure ROM ==="));
+    m_display.println();
 
-    _display.setFont(Verdana12);
-    _display.println(filename);
+    m_display.setFont(Verdana12);
+    m_display.println(filename);
 
-    _display.print("[ LOW ]");
-    _display.print("  HIGH  ");
+    m_display.print("[ LOW ]");
+    m_display.print("  HIGH  ");
 }
 
-void printUpperLowerSelection(bool higher) {
-    _display.setFont(Verdana12);
-    _display.setRow(4);
-    _display.setCol(0);
+void Display::printUpperLowerSelection(bool higher) {
+    m_display.setFont(Verdana12);
+    m_display.setRow(4);
+    m_display.setCol(0);
     if (higher) {
-        _display.print("  LOW  ");
-        _display.print("[ HIGH ]");
+        m_display.print("  LOW  ");
+        m_display.print("[ HIGH ]");
     } else {
-        _display.print("[ LOW ]");
-        _display.print("  HIGH  ");
+        m_display.print("[ LOW ]");
+        m_display.print("  HIGH  ");
     }
 }
 
-void printStartLoading(const String& filename) {
-    _display.clear();
-    _display.setFont(System5x7);
-    _display.println("====== Loading ======");
-    _display.println();
-    _display.setFont(Verdana12);
-    _display.print("[ ");
-    _display.print(filename);
-    _display.println(" ]");
-    _display.print("[");
-    _display.setCol(95);
-    _display.println("]");
+void Display::printStartLoading(const String& filename) {
+    m_display.clear();
+    m_display.setFont(System5x7);
+    m_display.println("====== Loading ======");
+    m_display.println();
+    m_display.setFont(Verdana12);
+    m_display.print("[ ");
+    m_display.print(filename);
+    m_display.println(" ]");
+    m_display.print("[");
+    m_display.setCol(95);
+    m_display.println("]");
 }
 
-void printLoadingProgress(const String& filename, uint8_t progress) {
-    _display.setRow(4);
-    _display.setCol(4);
+void Display::printLoadingProgress(const String& filename, uint8_t progress) {
+    m_display.setRow(4);
+    m_display.setCol(4);
 
     for (uint8_t i = 0; i < progress; i++) {
-        _display.print("#");
+        m_display.print("#");
     }
 }
 
-void printLoadingComplete(bool error) {
-    _display.clear();
-    _display.setFont(System5x7);
+void Display::printLoadingComplete(bool error) {
+    m_display.clear();
+    m_display.setFont(System5x7);
     if (error) {
-        _display.println("Load error!");
+        m_display.println("Load error!");
     } else {
-        _display.println("Ready.");
+        m_display.println("Ready.");
     }
-    _display.println();
+    m_display.println();
 }
 
-void printSave() {
-    _display.clear();
-    _display.setFont(System5x7);
-    _display.println("ROM configured.");
-    _display.println();
-    _display.println("Please restart CPC");
-    _display.println();
+void Display::printSave() {
+    m_display.clear();
+    m_display.setFont(System5x7);
+    m_display.println("ROM configured.");
+    m_display.println();
+    m_display.println("Please restart CPC");
+    m_display.println();
 }
 
-} // namespace
+void Display::setup() { m_display.begin(&Adafruit128x64, I2C_ADDRESS); m_current_state = INIT; }
 
-void setup() { _display.begin(&Adafruit128x64, I2C_ADDRESS); currentState = INIT; }
-
-void update(const DisplayState &state, const DisplayData &data) {
+void Display::update(const DisplayState &state, const DisplayData &data) {
     switch (state) {
     case INIT: {
         printInit();
@@ -179,7 +172,7 @@ void update(const DisplayState &state, const DisplayData &data) {
         break;
     }
     case CONFIRM: {
-        if (currentState == CONFIRM) {
+        if (m_current_state == CONFIRM) {
             printUpperLowerSelection(data.m_bank_select);
         } else {
             printConfirmationMsg(data.m_current_filename);
@@ -205,7 +198,7 @@ void update(const DisplayState &state, const DisplayData &data) {
         break;
     }
 
-    currentState = state; // keep record of the current state
+    m_current_state = state; // keep the current state
 }
 
-} // namespace display
+} // namespace

@@ -10,7 +10,7 @@
  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 */
-namespace sram {
+namespace cpc_rom_board::sram {
 namespace {
 
 // https://timodenk.com/blog/port-manipulation-and-arduino-digitalwrite-performance/
@@ -65,7 +65,7 @@ void writeSRAMByte(uint16_t addr, uint8_t data, bool lower) {
 
 } // namespace
 
-bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
+bool load(File &romRile, const bool lower, SRamListener& listener) {
     uint8_t buffer[STREAM_BUFFER_SIZE];
 
     uint32_t size = romRile.size();
@@ -106,7 +106,7 @@ bool load(File &romRile, const bool lower, void (*progress)(uint8_t)) {
         }
 
         uint8_t upt = (address * 10L) / size;
-        progress(upt);
+        listener.on_progress(upt);
     }
 
     digitalWrite(SRAM_CHIP_ENABLED, HIGH);
